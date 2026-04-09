@@ -1,0 +1,46 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Gestor de Tareas Flask</title>
+    <style>
+        body { font-family: 'Segoe UI', Arial, sans-serif; background-color: #f0f2f5; margin: 0; padding: 40px; display: flex; flex-direction: column; align-items: center; }
+        .container { background: white; padding: 30px; border-radius: 12px; box-shadow: 0 10px 25px rgba(0,0,0,0.1); width: 100%; max-width: 500px; }
+        h1 { color: #1a73e8; margin-top: 0; }
+        #taskList { list-style: none; padding: 0; }
+        .task-item { background: #fff; margin-bottom: 12px; padding: 15px; border-radius: 8px; border-left: 5px solid #007bff; display: flex; justify-content: space-between; align-items: center; box-shadow: 0 2px 5px rgba(0,0,0,0.05); transition: 0.3s; }
+        .task-item.completed { border-left-color: #28a745; opacity: 0.7; }
+        .task-item.completed span { text-decoration: line-through; color: #6c757d; }
+        .btn-complete { background: #28a745; color: white; text-decoration: none; padding: 5px 12px; border-radius: 4px; font-size: 0.8em; }
+        #taskForm { display: flex; gap: 10px; margin-top: 20px; }
+        #taskInput { flex-grow: 1; padding: 12px; border: 2px solid #ddd; border-radius: 6px; outline: none; }
+        #taskInput:focus { border-color: #007bff; }
+        button { background-color: #007bff; color: white; border: none; padding: 10px 20px; border-radius: 6px; cursor: pointer; font-weight: bold; }
+        button:hover { background-color: #0056b3; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Mi Lista de Tareas</h1>
+        
+        <ul id="taskList">
+            {% for tarea in tareas %}
+            <li class="task-item {{ 'completed' if tarea.hecho }}">
+                <span>{{ tarea.texto }}</span>
+                {% if not tarea.hecho %}
+                <a href="/completar/{{ tarea.id }}" class="btn-complete">✓</a>
+                {% endif %}
+            </li>
+            {% endfor %}
+        </ul>
+
+        <hr>
+
+        <form id="taskForm" action="/agregar" method="POST">
+            <input type="text" name="texto_tarea" id="taskInput" placeholder="¿Qué hay que hacer?" required>
+            <button type="submit">Agregar</button>
+        </form>
+    </div>
+</body>
+</html>
