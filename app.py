@@ -33,7 +33,7 @@ def load_user(user_id):
 
 # ── DB helpers ─────────────────────────────────────────────────────────────────
 def get_db():
-    return psycopg2.connect(os.environ["DATABASE_URL"], cursor_factory=RealDictCursor)
+    return psycopg2.connect(os.environ["DATABASE_KEY"], cursor_factory=RealDictCursor)
 
 def init_db():
     con = get_db()
@@ -160,8 +160,8 @@ def agregar():
     if texto:
         con = get_db()
         cur = con.cursor()
-        cur.execute("SELECT COALESCE(MAX(orden), -1) + 1 FROM tareas WHERE user_id = %s", (current_user.id,))
-        orden = cur.fetchone()["coalesce"]
+        cur.execute("SELECT COALESCE(MAX(orden), -1) + 1 AS orden FROM tareas WHERE user_id = %s", (current_user.id,))
+        orden = cur.fetchone()["orden"]
         cur.execute(
             "INSERT INTO tareas (user_id, texto, categoria, recordatorio, orden) VALUES (%s, %s, %s, %s, %s)",
             (current_user.id, texto, categoria, recordatorio, orden)
