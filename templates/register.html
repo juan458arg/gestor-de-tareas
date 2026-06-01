@@ -3,11 +3,181 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Registrarse</title>
-    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+    <title>Registrarse — Gestor de Tareas</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link href="https://fonts.googleapis.com/css2?family=DM+Sans:opsz,wght@9..40,300;9..40,400;9..40,500;9..40,600&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --bg: #0f1117;
+            --surface: #181c27;
+            --surface-2: #1e2335;
+            --border: rgba(255,255,255,.07);
+            --border-hover: rgba(255,255,255,.14);
+            --text-primary: #eef0f6;
+            --text-secondary: #8b91a8;
+            --text-muted: #4f556b;
+            --accent: #7c6bff;
+            --accent-glow: rgba(124,107,255,.18);
+            --accent-dim: rgba(124,107,255,.12);
+            --red: #f56565;
+            --red-dim: rgba(245,101,101,.12);
+            --font-body: 'DM Sans', sans-serif;
+            --transition: .2s cubic-bezier(.4,0,.2,1);
+        }
+        [data-theme="light"] {
+            --bg: #f4f6fb;
+            --surface: #ffffff;
+            --surface-2: #f0f2f8;
+            --border: rgba(0,0,0,.08);
+            --border-hover: rgba(0,0,0,.16);
+            --text-primary: #1a1d2e;
+            --text-secondary: #5a6075;
+            --text-muted: #9298ad;
+            --accent: #5b4dff;
+            --accent-glow: rgba(91,77,255,.15);
+            --accent-dim: rgba(91,77,255,.08);
+            --red: #d94f4f;
+            --red-dim: rgba(217,79,79,.1);
+        }
+        *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+        body {
+            font-family: var(--font-body);
+            background: var(--bg);
+            color: var(--text-primary);
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 24px;
+            background-image: radial-gradient(ellipse 80% 50% at 50% -10%, var(--accent-glow) 0%, transparent 60%);
+            transition: background var(--transition), color var(--transition);
+        }
+        .auth-card {
+            background: var(--surface);
+            border: 1px solid var(--border);
+            border-radius: 22px;
+            padding: 40px 36px;
+            width: 100%;
+            max-width: 380px;
+            box-shadow: 0 24px 60px rgba(0,0,0,.18);
+            animation: fadeUp .3s ease both;
+        }
+        @keyframes fadeUp {
+            from { opacity: 0; transform: translateY(12px); }
+            to   { opacity: 1; transform: translateY(0); }
+        }
+        .auth-logo {
+            font-size: 2rem;
+            color: var(--accent);
+            text-align: center;
+            margin-bottom: 16px;
+        }
+        .auth-title {
+            font-size: 1.5rem;
+            font-weight: 600;
+            letter-spacing: -.03em;
+            text-align: center;
+            margin-bottom: 6px;
+        }
+        .auth-subtitle {
+            font-size: .85rem;
+            color: var(--text-secondary);
+            text-align: center;
+            margin-bottom: 28px;
+        }
+        .auth-error {
+            background: var(--red-dim);
+            border: 1px solid var(--red);
+            color: var(--red);
+            font-size: .82rem;
+            padding: 10px 14px;
+            border-radius: 10px;
+            margin-bottom: 18px;
+        }
+        .field { margin-bottom: 14px; }
+        .field label {
+            display: block;
+            font-size: .78rem;
+            font-weight: 500;
+            color: var(--text-secondary);
+            margin-bottom: 6px;
+            letter-spacing: .02em;
+        }
+        input[type="text"], input[type="password"] {
+            background: var(--surface-2);
+            border: 1px solid var(--border);
+            border-radius: 10px;
+            color: var(--text-primary);
+            font-family: var(--font-body);
+            font-size: .875rem;
+            padding: 10px 14px;
+            outline: none;
+            width: 100%;
+            transition: border-color var(--transition), box-shadow var(--transition);
+        }
+        input::placeholder { color: var(--text-muted); }
+        input:focus {
+            border-color: var(--accent);
+            box-shadow: 0 0 0 3px var(--accent-glow);
+        }
+        .btn-primary {
+            width: 100%;
+            background: var(--accent);
+            color: #fff;
+            border: none;
+            border-radius: 10px;
+            font-family: var(--font-body);
+            font-size: .9rem;
+            font-weight: 600;
+            padding: 11px;
+            cursor: pointer;
+            margin-top: 8px;
+            transition: all var(--transition);
+        }
+        .btn-primary:hover {
+            filter: brightness(1.12);
+            box-shadow: 0 0 0 4px var(--accent-glow);
+            transform: translateY(-1px);
+        }
+        .auth-footer {
+            text-align: center;
+            font-size: .82rem;
+            color: var(--text-secondary);
+            margin-top: 22px;
+        }
+        .auth-footer a {
+            color: var(--accent);
+            text-decoration: none;
+            font-weight: 500;
+        }
+        .auth-footer a:hover { text-decoration: underline; }
+        .theme-toggle {
+            position: fixed;
+            top: 16px;
+            right: 16px;
+            width: 36px;
+            height: 36px;
+            border-radius: 50%;
+            border: 1px solid var(--border);
+            background: var(--surface);
+            cursor: pointer;
+            font-size: 1rem;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: all var(--transition);
+        }
+        .theme-toggle:hover { border-color: var(--border-hover); }
+        :root .icon-light, [data-theme="light"] .icon-dark  { display: none; }
+        :root .icon-dark,  [data-theme="light"] .icon-light { display: block; }
+    </style>
 </head>
 <body>
-<div class="auth-wrapper">
+    <button class="theme-toggle" id="themeToggle" aria-label="Cambiar tema">
+        <span class="icon-dark">🌙</span>
+        <span class="icon-light">☀️</span>
+    </button>
+
     <div class="auth-card">
         <div class="auth-logo">✦</div>
         <h1 class="auth-title">Crear cuenta</h1>
@@ -17,7 +187,7 @@
         <div class="auth-error">{{ error }}</div>
         {% endif %}
 
-        <form method="POST" action="/register" class="auth-form">
+        <form method="POST" action="/register">
             <div class="field">
                 <label for="username">Usuario</label>
                 <input type="text" id="username" name="username" placeholder="elegí un nombre" required autofocus>
@@ -26,16 +196,22 @@
                 <label for="password">Contraseña</label>
                 <input type="password" id="password" name="password" placeholder="••••••••" required>
             </div>
-            <button type="submit" class="btn-primary btn-full">Crear cuenta</button>
+            <button type="submit" class="btn-primary">Crear cuenta</button>
         </form>
 
         <p class="auth-footer">¿Ya tenés cuenta? <a href="/login">Iniciá sesión</a></p>
     </div>
-</div>
-<script>
-    if (localStorage.getItem('theme') === 'light') {
-        document.documentElement.setAttribute('data-theme', 'light');
-    }
-</script>
+
+    <script>
+        const saved = localStorage.getItem('theme');
+        if (saved === 'light') document.documentElement.setAttribute('data-theme', 'light');
+
+        document.getElementById('themeToggle').addEventListener('click', () => {
+            const cur = document.documentElement.getAttribute('data-theme');
+            const next = cur === 'light' ? 'dark' : 'light';
+            document.documentElement.setAttribute('data-theme', next);
+            localStorage.setItem('theme', next);
+        });
+    </script>
 </body>
 </html>
