@@ -5,6 +5,12 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Gestor de Tareas</title>
     <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+    <script>
+        // Aplicar tema ANTES de renderizar para evitar flash
+        if (localStorage.getItem('theme') === 'light') {
+            document.documentElement.setAttribute('data-theme', 'light');
+        }
+    </script>
 </head>
 <body>
 <div class="container">
@@ -12,7 +18,14 @@
     <!-- Header -->
     <header class="app-header">
         <h1>Mis <span>tareas</span></h1>
-        <span class="date-label">{{ ahora.strftime('%a %d %b %Y') }}</span>
+        <div class="header-actions">
+            <button class="theme-toggle" id="themeToggle" title="Cambiar tema" aria-label="Cambiar tema">
+                <span class="icon-dark">🌙</span>
+                <span class="icon-light">☀️</span>
+            </button>
+            <span class="username-badge">{{ current_user.username }}</span>
+            <a href="/logout" class="btn-logout">Salir</a>
+        </div>
     </header>
 
     <!-- Stats -->
@@ -42,7 +55,7 @@
         <a href="/?categoria=otros"    class="{{ 'active' if categoria == 'otros' }}">Otros</a>
     </nav>
 
-    <!-- Formulario nueva tarea -->
+    <!-- Formulario -->
     <div class="add-card">
         <form action="/agregar" method="POST">
             <div class="top-row">
@@ -63,7 +76,7 @@
 
     <div class="divider"></div>
 
-    <!-- Lista de tareas -->
+    <!-- Lista -->
     <ul id="taskList" aria-label="Lista de tareas">
         {% for tarea in tareas %}
         <li class="task-item {{ 'completed' if tarea.hecho }}"
@@ -72,21 +85,16 @@
             draggable="true">
 
             <span class="drag-handle" aria-hidden="true">⠿</span>
-
             <span class="task-text">{{ tarea.texto }}</span>
 
             {% if tarea.recordatorio %}
                 {% set diff = (tarea.recordatorio - ahora).total_seconds() %}
                 <span class="reminder {{ 'vencido' if diff < 0 }}" title="Recordatorio">
                     ⏰
-                    {% if diff < 0 %}
-                        vencido
-                    {% elif diff < 3600 %}
-                        {{ (diff // 60) | int }}min
-                    {% elif diff < 86400 %}
-                        {{ (diff // 3600) | int }}h
-                    {% else %}
-                        {{ tarea.recordatorio.strftime('%d/%m') }}
+                    {% if diff < 0 %}vencido
+                    {% elif diff < 3600 %}{{ (diff // 60) | int }}min
+                    {% elif diff < 86400 %}{{ (diff // 3600) | int }}h
+                    {% else %}{{ tarea.recordatorio.strftime('%d/%m') }}
                     {% endif %}
                 </span>
             {% endif %}
@@ -94,17 +102,17 @@
             <span class="badge badge-{{ tarea.categoria }}">{{ tarea.categoria }}</span>
 
             {% if not tarea.hecho %}
-            <a href="/completar/{{ tarea.id }}" class="btn-complete" title="Marcar como completada">✓</a>
+            <a href="/completar/{{ tarea.id }}" class="btn-complete" title="Completar">✓</a>
             {% endif %}
 
             <form action="/eliminar/{{ tarea.id }}" method="POST" style="display:inline">
-                <button type="submit" class="btn-delete" title="Eliminar tarea">✕</button>
+                <button type="submit" class="btn-delete" title="Eliminar">✕</button>
             </form>
         </li>
         {% else %}
         <li class="empty">
             <span class="empty-icon">✦</span>
-            Sin tareas en esta vista
+            No hay tareas todavía. ¡Agregá una!
         </li>
         {% endfor %}
     </ul>
@@ -112,6 +120,17 @@
 </div>
 
 <script>
+// ── Tema oscuro/claro ────────────────────────────────────────────────────────
+const btn = document.getElementById('themeToggle');
+function applyTheme(theme) {
+    document.documentElement.setAttribute('data-theme', theme);
+    localStorage.setItem('theme', theme);
+}
+btn.addEventListener('click', () => {
+    const current = document.documentElement.getAttribute('data-theme');
+    applyTheme(current === 'light' ? 'dark' : 'light');
+});
+
 // ── Drag & drop ──────────────────────────────────────────────────────────────
 const list = document.getElementById('taskList');
 let dragging = null;
@@ -120,13 +139,11 @@ list.addEventListener('dragstart', e => {
     dragging = e.target.closest('.task-item');
     if (dragging) setTimeout(() => dragging.classList.add('dragging'), 0);
 });
-
 list.addEventListener('dragend', () => {
     if (dragging) dragging.classList.remove('dragging');
     list.querySelectorAll('.task-item').forEach(el => el.classList.remove('drag-over'));
     dragging = null;
 });
-
 list.addEventListener('dragover', e => {
     e.preventDefault();
     const target = e.target.closest('.task-item');
@@ -136,15 +153,14 @@ list.addEventListener('dragover', e => {
     const rect = target.getBoundingClientRect();
     list.insertBefore(dragging, e.clientY < rect.top + rect.height / 2 ? target : target.nextSibling);
 });
-
 list.addEventListener('drop', e => {
     e.preventDefault();
     list.querySelectorAll('.task-item').forEach(el => el.classList.remove('drag-over'));
     const orden = [...list.querySelectorAll('.task-item[data-id]')].map(el => +el.dataset.id);
     fetch('/reordenar', {
-        method:  'POST',
+        method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body:    JSON.stringify({ orden }),
+        body: JSON.stringify({ orden }),
     });
 });
 </script>
