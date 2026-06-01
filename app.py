@@ -1,36 +1,32 @@
-from flask import Flask, render_template, request, redirect, jsonify
+import os
+from flask import Flask, render_template, request, redirect
 from datetime import datetime
+import psycopg2
+from psycopg2.extras import RealDictCursor
 
 app = Flask(__name__)
 
-tareas = [
-    {'id': 1, 'texto': 'Revisar el informe trimestral', 'hecho': False, 'categoria': 'trabajo', 'recordatorio': None, 'orden': 0},
-    {'id': 2, 'texto': 'Ir al gimnasio',               'hecho': False, 'categoria': 'personal', 'recordatorio': None, 'orden': 1},
-    {'id': 3, 'texto': 'Enviar propuesta al cliente',  'hecho': False, 'categoria': 'urgente',  'recordatorio': None, 'orden': 2},
-    {'id': 4, 'texto': 'Comprar víveres',              'hecho': True,  'categoria': 'personal', 'recordatorio': None, 'orden': 3},
-]
-siguiente_id = 10
+def get_db():
+    return psycopg2.connect(os.environ["DATABASE_URL"], cursor_factory=RealDictCursor)
 
+def init_db():
+    con = get_db()
+    cur = con.cursor()
+    cur.execute("""
+        CREATE TABLE IF NOT EXISTS tareas (
+            id          SERIAL PRIMARY KEY,
+            texto       TEXT NOT NULL,
+            hecho       BOOLEAN DEFAULT FALSE,
+            categoria   TEXT DEFAULT 'otros',
+            recordatorio TIMESTAMP,
+            orden       INTEGER DEFAULT 0
+        )
+    """)
+    con.commit()
+    cur.close()
+    con.close()
 
-def agregar_tarea(texto, categoria='otros', recordatorio=None):
-    global siguiente_id
-    orden_max = max((t['orden'] for t in tareas), default=-1) + 1
-    tareas.append({
-        'id':          siguiente_id,
-        'texto':       texto,
-        'hecho':       False,
-        'categoria':   categoria,
-        'recordatorio': recordatorio,
-        'orden':       orden_max,
-    })
-    siguiente_id += 1
-
-
-def completar_tarea(id_tarea):
-    for tarea in tareas:
-        if tarea['id'] == id_tarea:
-            tarea['hecho'] = True
-            break
+init_db()
 
 
 # ── Rutas ──────────────────────────────────────────────────────────────────────
@@ -38,70 +34,100 @@ def completar_tarea(id_tarea):
 @app.route('/')
 def index():
     categoria  = request.args.get('categoria', 'todas')
-    solo_estado = request.args.get('estado', 'todas')   # pendientes | completadas
+    estado     = request.args.get('estado', 'todas')
 
-    filtradas = list(tareas)
+    con = get_db()
+    cur = con.cursor()
+
+    query  = "SELECT * FROM tareas WHERE 1=1"
+    params = []
 
     if categoria != 'todas':
-        filtradas = [t for t in filtradas if t['categoria'] == categoria]
+        query += " AND categoria = %s"
+        params.append(categoria)
+    if estado == 'pendientes':
+        query += " AND hecho = FALSE"
+    elif estado == 'completadas':
+        query += " AND hecho = TRUE"
 
-    if solo_estado == 'pendientes':
-        filtradas = [t for t in filtradas if not t['hecho']]
-    elif solo_estado == 'completadas':
-        filtradas = [t for t in filtradas if t['hecho']]
-
-    filtradas.sort(key=lambda t: t['orden'])
+    query += " ORDER BY orden ASC"
+    cur.execute(query, params)
+    tareas = cur.fetchall()
+    cur.close()
+    con.close()
 
     ahora = datetime.now()
-    return render_template('index.html', tareas=filtradas, ahora=ahora,
-                           categoria=categoria, estado=solo_estado)
+    return render_template('index.html', tareas=tareas, ahora=ahora,
+                           categoria=categoria, estado=estado)
 
 
 @app.route('/agregar', methods=['POST'])
 def agregar():
-    texto      = request.form.get('texto_tarea', '').strip()
-    categoria  = request.form.get('categoria', 'otros')
-    recordatorio_str = request.form.get('recordatorio', '')
+    texto     = request.form.get('texto_tarea', '').strip()
+    categoria = request.form.get('categoria', 'otros')
+    rec_str   = request.form.get('recordatorio', '')
 
     recordatorio = None
-    if recordatorio_str:
+    if rec_str:
         try:
-            recordatorio = datetime.fromisoformat(recordatorio_str)
+            recordatorio = datetime.fromisoformat(rec_str)
         except ValueError:
             pass
 
     if texto:
-        agregar_tarea(texto, categoria, recordatorio)
+        con = get_db()
+        cur = con.cursor()
+        cur.execute("SELECT COALESCE(MAX(orden), -1) + 1 FROM tareas")
+        orden = cur.fetchone()['coalesce']
+        cur.execute(
+            "INSERT INTO tareas (texto, categoria, recordatorio, orden) VALUES (%s, %s, %s, %s)",
+            (texto, categoria, recordatorio, orden)
+        )
+        con.commit()
+        cur.close()
+        con.close()
+
     return redirect('/')
 
 
 @app.route('/completar/<int:id>')
 def completar(id):
-    completar_tarea(id)
+    con = get_db()
+    cur = con.cursor()
+    cur.execute("UPDATE tareas SET hecho = TRUE WHERE id = %s", (id,))
+    con.commit()
+    cur.close()
+    con.close()
     return redirect('/')
 
 
 @app.route('/eliminar/<int:id>', methods=['POST'])
 def eliminar(id):
-    global tareas
-    tareas = [t for t in tareas if t['id'] != id]
+    con = get_db()
+    cur = con.cursor()
+    cur.execute("DELETE FROM tareas WHERE id = %s", (id,))
+    con.commit()
+    cur.close()
+    con.close()
     return redirect('/')
 
 
 @app.route('/reordenar', methods=['POST'])
 def reordenar():
-    """Recibe {"orden": [id1, id2, id3, ...]} y actualiza el campo orden."""
+    from flask import jsonify
     data = request.get_json(silent=True)
     if not data or 'orden' not in data:
         return jsonify({'error': 'payload inválido'}), 400
 
-    id_a_orden = {id_: i for i, id_ in enumerate(data['orden'])}
-    for tarea in tareas:
-        if tarea['id'] in id_a_orden:
-            tarea['orden'] = id_a_orden[tarea['id']]
-
+    con = get_db()
+    cur = con.cursor()
+    for i, id_ in enumerate(data['orden']):
+        cur.execute("UPDATE tareas SET orden = %s WHERE id = %s", (i, id_))
+    con.commit()
+    cur.close()
+    con.close()
     return jsonify({'ok': True})
 
 
 if __name__ == '__main__':
-    app.run(debug=True)
+    app.run(host='0.0.0.0', port=int(os.environ.get('PORT', 5000)))

@@ -1,0 +1,42 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Iniciar sesión</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body>
+<div class="auth-wrapper">
+    <div class="auth-card">
+        <div class="auth-logo">✦</div>
+        <h1 class="auth-title">Bienvenido</h1>
+        <p class="auth-subtitle">Ingresá a tu cuenta</p>
+
+        {% if error %}
+        <div class="auth-error">{{ error }}</div>
+        {% endif %}
+
+        <form method="POST" action="/login" class="auth-form">
+            <div class="field">
+                <label for="username">Usuario</label>
+                <input type="text" id="username" name="username" placeholder="tu usuario" required autofocus>
+            </div>
+            <div class="field">
+                <label for="password">Contraseña</label>
+                <input type="password" id="password" name="password" placeholder="••••••••" required>
+            </div>
+            <button type="submit" class="btn-primary btn-full">Ingresar</button>
+        </form>
+
+        <p class="auth-footer">¿No tenés cuenta? <a href="/register">Registrate</a></p>
+    </div>
+</div>
+<script>
+    // Aplicar tema guardado antes de renderizar
+    if (localStorage.getItem('theme') === 'light') {
+        document.documentElement.setAttribute('data-theme', 'light');
+    }
+</script>
+</body>
+</html>
