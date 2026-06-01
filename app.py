@@ -33,7 +33,7 @@ def load_user(user_id):
 
 # ── DB helpers ─────────────────────────────────────────────────────────────────
 def get_db():
-    return psycopg2.connect(os.environ["DATABASE_KEY"], cursor_factory=RealDictCursor)
+    return psycopg2.connect(os.environ["DATABASE_URL"], cursor_factory=RealDictCursor)
 
 def init_db():
     con = get_db()
